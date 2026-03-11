@@ -1,0 +1,29 @@
+{
+  "capabilities": [
+    "multi_ack",
+    "thin-pack",
+    "side-band",
+    "side-band-64k",
+    "ofs-delta",
+    "shallow",
+    "deepen-since",
+    "deepen-not",
+    "deepen-relative",
+    "no-progress",
+    "include-tag",
+    "multi_ack_detailed",
+    "allow-tip-sha1-in-want",
+    "allow-reachable-sha1-in-want",
+    "no-done",
+    "symref=HEAD:refs/heads/main",
+    "filter",
+    "object-format=sha1",
+    "agent=git/github-94ec3a8682aa-Linux"
+  ],
+  "HEAD": "refs/heads/main",
+  "refs": {
+    "heads": {
+      "main": "9dc07025889c4b25399fb5a2812e41135367b35c"
+    }
+  }
+}

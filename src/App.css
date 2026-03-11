@@ -1,0 +1,5 @@
+/* CSS reset and helper classes if needed */
+.app-container {
+  display: flex;
+  height: 100vh;
+}

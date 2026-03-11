@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark Theme Colors */
+  --bg-primary: #1B211A;
+  --bg-secondary: #2a3129;
+  --accent-primary: #628141;
+  --accent-secondary: #8BAE66;
+  --text-primary: #EBD5AB;
+  --text-secondary: rgba(235, 213, 171, 0.6);
+  --text-muted: rgba(235, 213, 171, 0.4);
+  --border-color: #333d31;
+  
+  /* VS Code specific mappings for theme */
+  --activity-bar-bg: #1B211A;
+  --side-bar-bg: #232a22;
+  --editor-bg: #1B211A;
+  --status-bar-bg: #628141;
+  --status-bar-text: #EBD5AB;
+}
+
+[data-theme='light'] {
+  /* Light Theme Colors */
+  --bg-primary: #ECF4E8;
+  --bg-secondary: #dcf2d1;
+  --accent-primary: #CBF3BB;
+  --accent-secondary: #CBF3BB;
+  --text-primary: #333;
+  --text-secondary: rgba(51, 51, 51, 0.6);
+  --text-muted: rgba(51, 51, 51, 0.4);
+  --text-alt: #93BFC7;
+  --border-color: #cbd5c8;
+
+  --activity-bar-bg: #ECF4E8;
+  --side-bar-bg: #f5fbf2;
+  --editor-bg: #ECF4E8;
+  --status-bar-bg: #CBF3BB;
+  --status-bar-text: #333;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Google Sans', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Scrollbar styling for VS Code look */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.3);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+}
