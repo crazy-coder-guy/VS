@@ -1,16 +1,19 @@
 import React, { useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { setSidebarWidth } from './store/fileSlice';
 import TitleBar from './components/layout/TitleBar';
 import ActivityBar from './components/layout/ActivityBar';
 import Sidebar from './components/layout/Sidebar';
+import RightSidebar from './components/layout/RightSidebar';
 import Editor from './components/layout/Editor';
 import StatusBar from './components/layout/StatusBar';
+import ProjectService from './services/ProjectService';
 import { initBrowserFS } from './utils/gitFs';
 import './App.css';
 
+import { setSidebarWidth, setRightSidebarWidth } from './store/fileSlice';
+
 function App() {
-  const { isSidebarOpen, sidebarWidth } = useSelector(state => state.files);
+  const { isSidebarOpen, sidebarWidth, isRightSidebarOpen, rightSidebarWidth } = useSelector(state => state.files);
   const dispatch = useDispatch();
   const isResizing = useRef(false);
 
@@ -35,16 +38,30 @@ function App() {
   };
 
   const handleMouseMove = (e) => {
-    if (!isResizing.current) return;
-
-    // Calculate new width: mouse X - ActivityBar width (50px)
-    const newWidth = e.clientX - 50;
-
-    if (newWidth < 50) {
-      dispatch(setSidebarWidth(0));
-    } else if (newWidth > 150 && newWidth < 600) {
-      dispatch(setSidebarWidth(newWidth));
+    if (isResizing.current) {
+      const newWidth = e.clientX - 50;
+      if (newWidth < 50) {
+        dispatch(setSidebarWidth(0));
+      } else if (newWidth > 150 && newWidth < 600) {
+        dispatch(setSidebarWidth(newWidth));
+      }
+    } else if (isRightResizing.current) {
+      const newWidth = window.innerWidth - e.clientX;
+      if (newWidth < 50) {
+        dispatch(setRightSidebarWidth(0));
+      } else if (newWidth > 150 && newWidth < 800) {
+        dispatch(setRightSidebarWidth(newWidth));
+      }
     }
+  };
+
+  const isRightResizing = useRef(false);
+
+  const startRightResizing = (e) => {
+    isRightResizing.current = true;
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', stopResizing);
+    document.body.style.cursor = 'col-resize';
   };
 
   return (
@@ -57,6 +74,7 @@ function App() {
       backgroundColor: 'var(--bg-primary)',
       color: 'var(--text-primary)',
     }}>
+      <ProjectService />
       <TitleBar />
       <div style={{
         display: 'flex',
@@ -83,6 +101,24 @@ function App() {
         )}
 
         <Editor />
+
+        {isRightSidebarOpen && (
+          <>
+            <div
+              onMouseDown={startRightResizing}
+              style={{
+                width: '4px',
+                cursor: 'col-resize',
+                backgroundColor: 'transparent',
+                zIndex: 100,
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-primary)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            />
+            <RightSidebar width={`${rightSidebarWidth}px`} />
+          </>
+        )}
       </div>
       <StatusBar />
     </div>

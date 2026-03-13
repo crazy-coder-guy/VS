@@ -14,7 +14,6 @@ const ActivityBar = () => {
     { id: 'search', Icon: Search, label: 'Search' },
     { id: 'git', Icon: GitGraph, label: 'Source Control' },
     { id: 'extensions', Icon: Blocks, label: 'Extensions' },
-    { id: 'chat', Icon: MessageSquare, label: 'AI Chat' },
   ];
 
   const bottomIcons = [

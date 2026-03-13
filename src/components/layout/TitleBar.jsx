@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, PanelLeft, PanelRight, PanelBottom } from 'lucide-react';
+import { Box, PanelLeft, PanelRight, PanelBottom, Terminal as TerminalIcon, MessageSquare } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { openFile, setFileTree, toggleSidebar } from '../../store/fileSlice';
+import { openFile, setFileTree, toggleSidebar, toggleRightSidebar, toggleAutoSave, createTerminal } from '../../store/fileSlice';
 import { readDirectory } from '../../utils/fileSystem';
 
 const TitleBar = () => {
@@ -9,7 +9,7 @@ const TitleBar = () => {
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
   const dispatch = useDispatch();
-  const { isSidebarOpen } = useSelector(state => state.files);
+  const { isSidebarOpen, isRightSidebarOpen, autoSave, rootFolderPath } = useSelector(state => state.files);
 
   const handleOpenFileClick = () => {
     fileInputRef.current?.click();
@@ -19,8 +19,21 @@ const TitleBar = () => {
     try {
       const dirHandle = await window.showDirectoryPicker();
       window.rootDirectoryHandle = dirHandle; // Save globally so Sidebar can refresh
+      
       const tree = await readDirectory(dirHandle);
-      dispatch(setFileTree({ name: dirHandle.name, tree }));
+
+      // Synchronize with backend
+      const parentHint = rootFolderPath ? rootFolderPath.substring(0, rootFolderPath.lastIndexOf('\\')) : 'D:\\AICODE';
+      const defaultPath = `${parentHint}\\${dirHandle.name}`;
+      const absolutePath = prompt(`Please confirm the absolute path for '${dirHandle.name}' (needed for Git/Linting):`, defaultPath);
+      
+      dispatch(setFileTree({ name: dirHandle.name, tree, path: absolutePath }));
+
+      if (absolutePath) {
+        const { projectSocket } = await import('../../services/ProjectService');
+        projectSocket.emit('set-project-root', { path: absolutePath });
+      }
+
       setActiveMenu(null);
     } catch (err) {
       console.error("Failed to open folder:", err);
@@ -61,6 +74,8 @@ const TitleBar = () => {
       { label: 'Save', action: () => { } },
       { label: 'Save As...', action: () => { } },
       { label: '---' },
+      { label: `${autoSave ? '✓ ' : '  '}Auto Save`, action: () => { dispatch(toggleAutoSave()); setActiveMenu(null); } },
+      { label: '---' },
       { label: 'Exit', action: () => { } }
     ],
     'Edit': [
@@ -71,7 +86,7 @@ const TitleBar = () => {
     'View': [{ label: 'Command Palette...' }],
     'Go': [{ label: 'Go to File...' }],
     'Run': [{ label: 'Start Debugging' }],
-    'Terminal': [{ label: 'New Terminal' }],
+    'Terminal': [{ label: 'New Terminal', action: () => { dispatch(createTerminal()); setActiveMenu(null); } }],
     'Help': [{ label: 'About' }]
   };
 
@@ -107,7 +122,7 @@ const TitleBar = () => {
         display: 'flex',
         alignItems: 'center',
         padding: '0 10px',
-        fontSize: '13px',
+        fontSize: 'var(--font-size-md)',
         userSelect: 'none',
         zIndex: 1000,
         position: 'relative'
@@ -184,7 +199,7 @@ const TitleBar = () => {
         position: 'absolute',
         left: '50%',
         transform: 'translateX(-50%)',
-        fontSize: '12px',
+        fontSize: 'var(--font-size-sm)',
         opacity: 0.6,
         pointerEvents: 'none',
         display: 'flex',
@@ -216,8 +231,24 @@ const TitleBar = () => {
         >
           <PanelLeft size={18} />
         </div>
+
+        <div
+          onClick={() => dispatch(toggleRightSidebar())}
+          style={{
+            cursor: 'pointer',
+            padding: '4px 6px',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            backgroundColor: isRightSidebarOpen ? 'var(--bg-secondary)' : 'transparent',
+            opacity: isRightSidebarOpen ? 1 : 0.6,
+            transition: 'all 0.2s'
+          }}
+          title="Toggle Secondary Sidebar"
+        >
+          <PanelRight size={18} />
+        </div>
         <PanelBottom size={18} style={{ opacity: 0.3, padding: '4px 6px', cursor: 'not-allowed' }} title="Toggle Bottom Panel (Disabled)" />
-        <PanelRight size={18} style={{ opacity: 0.3, padding: '4px 6px', cursor: 'not-allowed' }} title="Toggle Secondary Sidebar (Disabled)" />
       </div>
     </div>
   );

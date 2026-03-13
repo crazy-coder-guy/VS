@@ -10,6 +10,8 @@ const initialState = {
   commits: [],
   changes: [], // { filepath, status }
   staged: [],  // { filepath, status }
+  isRepo: false,
+  log: [], // { oid, message, author, timestamp, parent }
   isCloning: false,
   cloneProgress: '',
   isPushing: false,
@@ -97,6 +99,14 @@ const gitSlice = createSlice({
     },
     clearGitError: (state) => {
       state.error = null;
+    },
+    setGitStatus: (state, action) => {
+      state.changes = action.payload.changes || [];
+      state.staged = action.payload.staged || [];
+      state.branches = action.payload.branches || [];
+      state.currentBranch = action.payload.currentBranch || 'main';
+      state.isRepo = action.payload.isRepo || false;
+      state.log = action.payload.log || [];
     }
   },
   extraReducers: (builder) => {
@@ -119,10 +129,10 @@ const gitSlice = createSlice({
       })
       // Refresh Status
       .addCase(refreshGitStatusThunk.fulfilled, (state, action) => {
-        state.changes = action.payload.changes;
-        state.staged = action.payload.staged;
-        state.branches = action.payload.branches;
-        state.currentBranch = action.payload.currentBranch;
+        state.changes = action.payload.changes || [];
+        state.staged = action.payload.staged || [];
+        state.branches = action.payload.branches || [];
+        state.currentBranch = action.payload.currentBranch || 'main';
       })
       // Push
       .addCase(pushRepoThunk.pending, (state) => {
@@ -139,5 +149,5 @@ const gitSlice = createSlice({
   }
 });
 
-export const { setRepoUrl, setGithubToken, setCloneProgress, clearGitError } = gitSlice.actions;
+export const { setRepoUrl, setGithubToken, setCloneProgress, clearGitError, setGitStatus } = gitSlice.actions;
 export default gitSlice.reducer;

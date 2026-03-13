@@ -5,15 +5,21 @@ const initialState = {
   activeFileId: null,
   fileTree: null, // Recursive tree structure
   rootFolderName: null,
+  rootFolderPath: null, // Absolute path for backend sync
   activeView: 'explorer', // 'explorer', 'search', 'chat'
   isSidebarOpen: true,
   sidebarWidth: 260,
+  isRightSidebarOpen: false,
+  rightSidebarWidth: 300,
   expandedFolders: {}, // { path: boolean }
   autoSave: false, // Auto-save toggle state
   // Terminal tracking
-  terminals: [{ id: 'term-1', name: 'bash', cwd: 'D:\\AICODE\\ai-ide' }],
+  terminals: [{ id: 'term-1', name: 'powershell', cwd: 'C:\\' }],
   activeTerminalId: 'term-1',
-  terminalCounter: 1
+  terminalCounter: 1,
+  cursorPosition: { lineNumber: 1, column: 1 },
+  problems: [], // Editor local markers
+  projectProblems: [] // Backend project-wide diagnostics
 };
 
 const fileSlice = createSlice({
@@ -21,14 +27,15 @@ const fileSlice = createSlice({
   initialState,
   reducers: {
     openFile: (state, action) => {
-      const { id, name, content, language } = action.payload;
-      const existingFile = state.openFiles.find(f => f.id === id || (f.name === name && f.content === content));
+      const { id, name, content, language, handle } = action.payload;
+      const existingFile = state.openFiles.find(f => f.id === id);
       
       if (!existingFile) {
-        state.openFiles.push({ id, name, content, language, isDirty: false });
+        state.openFiles.push({ id, name, content, language, handle, isDirty: false });
       } else {
         existingFile.isDirty = false;
         existingFile.content = content;
+        if (handle) existingFile.handle = handle;
       }
       state.activeFileId = id || (existingFile ? existingFile.id : id);
     },
@@ -38,6 +45,21 @@ const fileSlice = createSlice({
       if (state.activeFileId === id) {
         state.activeFileId = state.openFiles.length > 0 ? state.openFiles[state.openFiles.length - 1].id : null;
       }
+    },
+    closeAllFiles: (state) => {
+      state.openFiles = [];
+      state.activeFileId = null;
+    },
+    closeSavedFiles: (state) => {
+      state.openFiles = state.openFiles.filter(f => f.isDirty);
+      if (state.activeFileId && !state.openFiles.find(f => f.id === state.activeFileId)) {
+        state.activeFileId = state.openFiles.length > 0 ? state.openFiles[state.openFiles.length - 1].id : null;
+      }
+    },
+    closeOtherFiles: (state, action) => {
+      const id = action.payload || state.activeFileId;
+      state.openFiles = state.openFiles.filter(f => f.id === id);
+      state.activeFileId = id;
     },
     setActiveFile: (state, action) => {
       state.activeFileId = action.payload;
@@ -63,6 +85,15 @@ const fileSlice = createSlice({
     setFileTree: (state, action) => {
       state.fileTree = action.payload.tree;
       state.rootFolderName = action.payload.name;
+      state.rootFolderPath = action.payload.path;
+      // Update terminal path dynamically
+      if (action.payload.path) {
+        state.terminals.forEach(t => {
+          if (t.cwd === 'D:\\AICODE\\ai-ide' || t.cwd === 'C:\\' || t.cwd.startsWith('D:\\AICODE')) {
+            t.cwd = action.payload.path;
+          }
+        });
+      }
     },
     setActiveView: (state, action) => {
       if (state.activeView === action.payload && state.isSidebarOpen) {
@@ -81,6 +112,17 @@ const fileSlice = createSlice({
         state.isSidebarOpen = true;
       } else {
         state.isSidebarOpen = false;
+      }
+    },
+    toggleRightSidebar: (state) => {
+      state.isRightSidebarOpen = !state.isRightSidebarOpen;
+    },
+    setRightSidebarWidth: (state, action) => {
+      state.rightSidebarWidth = action.payload;
+      if (action.payload > 0) {
+        state.isRightSidebarOpen = true;
+      } else {
+        state.isRightSidebarOpen = false;
       }
     },
     toggleFolder: (state, action) => {
@@ -108,8 +150,8 @@ const fileSlice = createSlice({
       const newId = `term-${state.terminalCounter}`;
       state.terminals.push({
         id: newId,
-        name: 'bash',
-        cwd: cwd || 'D:\\AICODE\\ai-ide'
+        name: action.payload?.name || 'powershell',
+        cwd: cwd || (state.rootFolderName ? `D:\\${state.rootFolderName}` : 'C:\\')
       });
       state.activeTerminalId = newId;
     },
@@ -122,6 +164,15 @@ const fileSlice = createSlice({
     },
     setActiveTerminal: (state, action) => {
       state.activeTerminalId = action.payload;
+    },
+    setCursorPosition: (state, action) => {
+      state.cursorPosition = action.payload;
+    },
+    setProblems: (state, action) => {
+      state.problems = action.payload;
+    },
+    setProjectProblems: (state, action) => {
+      state.projectProblems = action.payload;
     }
   },
 });
@@ -129,7 +180,10 @@ const fileSlice = createSlice({
 export const { 
   openFile, closeFile, setActiveFile, updateFileContent, 
   setFileTree, setActiveView, toggleSidebar, setSidebarWidth,
+  toggleRightSidebar, setRightSidebarWidth,
   toggleFolder, expandAll, collapseAll,
-  createTerminal, closeTerminal, setActiveTerminal, toggleAutoSave, markFileSaved
+  createTerminal, closeTerminal, setActiveTerminal, toggleAutoSave, markFileSaved,
+  setCursorPosition, setProblems, setProjectProblems,
+  closeAllFiles, closeSavedFiles, closeOtherFiles
 } = fileSlice.actions;
 export default fileSlice.reducer;

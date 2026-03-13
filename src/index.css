@@ -10,7 +10,21 @@
   --text-secondary: rgba(235, 213, 171, 0.6);
   --text-muted: rgba(235, 213, 171, 0.4);
   --border-color: #333d31;
-  
+
+  /* Typography */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 14px;
+
+  /* VS Code Git UI Colors */
+  --git-added: #73c991;
+  --git-modified: #e2c08d;
+  --git-deleted: #f14c4c;
+  --git-untracked: #73c991;
+  --git-ignored: rgba(235, 213, 171, 0.4);
+  --git-graph-node: #52a1ff;
+
   /* VS Code specific mappings for theme */
   --activity-bar-bg: #1B211A;
   --side-bar-bg: #232a22;
@@ -42,7 +56,9 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
   padding: 0;
