@@ -10,18 +10,51 @@ import ProjectService from './services/ProjectService';
 import { initBrowserFS } from './utils/gitFs';
 import './App.css';
 
-import { setSidebarWidth, setRightSidebarWidth } from './store/fileSlice';
+import { setSidebarWidth, setRightSidebarWidth, openFile } from './store/fileSlice';
+import { projectSocket } from './services/ProjectService';
 
 function App() {
-  const { isSidebarOpen, sidebarWidth, isRightSidebarOpen, rightSidebarWidth } = useSelector(state => state.files);
+  const { isSidebarOpen, sidebarWidth, isRightSidebarOpen, rightSidebarWidth, openFiles } = useSelector(state => state.files);
   const dispatch = useDispatch();
   const isResizing = useRef(false);
+  const openFilesRef = useRef(openFiles);
+
+  useEffect(() => {
+    openFilesRef.current = openFiles;
+  }, [openFiles]);
 
   useEffect(() => {
     initBrowserFS().then(() => {
       console.log('BrowserFS Initialized');
     }).catch(console.error);
-  }, []);
+
+    const handleFileChanged = async ({ event, filePath }) => {
+      // Normalize path (chokidar might use backslashes on Windows)
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      console.log(`[Hot Reload] File changed: ${normalizedPath}`);
+
+      const fileToRefresh = openFilesRef.current.find(f => f.id === normalizedPath || f.id.replace(/\\/g, '/') === normalizedPath);
+      
+      if (fileToRefresh && fileToRefresh.handle) {
+         try {
+           const file = await fileToRefresh.handle.getFile();
+           const content = await file.text();
+           console.log(`[Hot Reload] Refreshing content for: ${fileToRefresh.name}`);
+           dispatch(openFile({
+             id: fileToRefresh.id,
+             name: fileToRefresh.name,
+             content: content,
+             handle: fileToRefresh.handle
+           }));
+         } catch (err) {
+           console.error("[Hot Reload] Failed to refresh file:", err);
+         }
+      }
+    };
+
+    projectSocket.on('file-changed', handleFileChanged);
+    return () => projectSocket.off('file-changed', handleFileChanged);
+  }, [dispatch]);
 
   const startResizing = (e) => {
     isResizing.current = true;

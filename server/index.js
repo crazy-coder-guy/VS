@@ -127,6 +127,7 @@ const setupWatcher = (dir) => {
 
   watcher.on('all', (event, filePath) => {
     console.log(`File ${event}: ${filePath}, triggering updates...`);
+    io.emit('file-changed', { event, filePath });
     runProjectLint();
     broadcastGitStatus();
   });
