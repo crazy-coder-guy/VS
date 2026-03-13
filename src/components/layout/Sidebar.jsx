@@ -13,7 +13,7 @@ const TreeItem = ({ item, depth = 0, parentPath = '', showMenu, parentHandle, re
   const dispatch = useDispatch();
   const [createName, setCreateName] = useState('');
   const inputRef = useRef(null);
-  const { activeFileId, expandedFolders, projectProblems } = useSelector(state => state.files);
+  const { activeFileId, expandedFolders, projectProblems, rootFolderPath } = useSelector(state => state.files);
   const currentPath = parentPath ? `${parentPath}/${item.name}` : item.name;
   const isOpen = !!expandedFolders[currentPath];
   const isSelected = selectedNode?.path === currentPath;
@@ -205,8 +205,20 @@ const TreeItem = ({ item, depth = 0, parentPath = '', showMenu, parentHandle, re
   };
 
   const handleDragStart = (e) => {
+    e.stopPropagation(); // Prevent parent folders from overwriting child data
+    
+    // Construct absolute path if possible for backend reliability
+    let finalPath = currentPath;
+    if (rootFolderPath) {
+      // Ensure we don't double up slashes
+      const base = rootFolderPath.endsWith('\\') || rootFolderPath.endsWith('/') 
+        ? rootFolderPath.slice(0, -1) 
+        : rootFolderPath;
+      finalPath = `${base}\\${currentPath.replace(/\//g, '\\')}`;
+    }
+
     e.dataTransfer.setData('application/json', JSON.stringify({
-      path: currentPath,
+      path: finalPath,
       name: item.name,
       kind: item.kind
     }));
