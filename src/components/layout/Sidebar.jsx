@@ -204,8 +204,22 @@ const TreeItem = ({ item, depth = 0, parentPath = '', showMenu, parentHandle, re
     showMenu(e.clientX, e.clientY, menuItems);
   };
 
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({
+      path: currentPath,
+      name: item.name,
+      kind: item.kind
+    }));
+    e.dataTransfer.effectAllowed = 'copyMove';
+  };
+
   return (
-    <div style={{ userSelect: 'none' }} onContextMenu={handleContextMenu}>
+    <div 
+      style={{ userSelect: 'none' }} 
+      onContextMenu={handleContextMenu}
+      draggable="true"
+      onDragStart={handleDragStart}
+    >
       <div 
         onClick={handleToggle}
         style={{

@@ -50,9 +50,79 @@ const ChatView = () => {
     projectSocket.emit('ai-chat-request', { prompt: userMsg });
   };
 
+  const [isOver, setIsOver] = useState(false);
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsOver(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsOver(false);
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('application/json'));
+      if (data && data.path) {
+        // Add file reference to input
+        const refText = `@${data.path} `;
+        setInput(prev => prev.includes(refText) ? prev : prev + refText);
+      }
+    } catch (err) {
+      console.error("Drop failed:", err);
+    }
+  };
+
+  const [currentRoot, setCurrentRoot] = useState('');
+
+  useEffect(() => {
+    projectSocket.on('project-root-updated', ({ path }) => {
+      setCurrentRoot(path);
+    });
+    // Request initial root if needed
+    projectSocket.emit('git-refresh-status'); // This often triggers root related updates
+    return () => projectSocket.off('project-root-updated');
+  }, []);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '10px' }}>
-      <div style={{ fontSize: 'var(--font-size-xs)', marginBottom: '10px', opacity: 0.6, fontWeight: 'bold' }}>AI CHAT</div>
+    <div 
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%', 
+        padding: '10px',
+        backgroundColor: isOver ? 'rgba(0, 122, 204, 0.05)' : 'transparent',
+        transition: 'background-color 0.2s',
+        border: isOver ? '2px dashed var(--accent-primary)' : '2px solid transparent',
+        boxSizing: 'border-box'
+      }}
+    >
+      <div style={{ fontSize: 'var(--font-size-xs)', marginBottom: '10px', opacity: 0.6, fontWeight: 'bold', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>AI CHAT</span>
+          {isOver && <span style={{ color: 'var(--accent-primary)' }}>Drop to add file reference</span>}
+        </div>
+        {currentRoot && (
+          <div style={{ 
+            fontSize: '9px', 
+            opacity: 0.5, 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap',
+            backgroundColor: 'var(--bg-secondary)',
+            padding: '2px 4px',
+            borderRadius: '2px'
+          }}>
+            Root: {currentRoot}
+          </div>
+        )}
+      </div>
       
       <div 
         ref={scrollRef}

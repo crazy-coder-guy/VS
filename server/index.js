@@ -251,7 +251,18 @@ io.on('connection', (socket) => {
   });
 
   // AI Service
-  setupAIService(io, socket, rootDir);
+  const updateRootDir = (newPath) => {
+    if (!newPath) return;
+    console.log(`AI Switching project root to: ${newPath}`);
+    rootDir = newPath;
+    gitService.setRootDir(rootDir);
+    setupWatcher(rootDir);
+    runProjectLint();
+    broadcastGitStatus();
+    socket.emit('project-root-updated', { path: rootDir });
+  };
+
+  setupAIService(io, socket, () => rootDir, updateRootDir);
 });
 
 const PORT = 3001;

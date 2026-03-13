@@ -1,6 +1,6 @@
 import { runAgent } from './agent.js';
 
-export default function setupAIService(io, socket, rootDir) {
+export default function setupAIService(io, socket, getRootDir, setRootDir) {
   socket.on('ai-chat-request', async ({ prompt }) => {
     console.log(`AI request from ${socket.id}: ${prompt}`);
     
@@ -11,9 +11,9 @@ export default function setupAIService(io, socket, rootDir) {
         isThinking: true 
       });
 
-      const response = await runAgent(prompt, rootDir, (progress) => {
+      const response = await runAgent(prompt, getRootDir(), (progress) => {
         socket.emit('ai-chat-progress', progress);
-      });
+      }, setRootDir);
 
       socket.emit('ai-chat-response', { 
         role: 'assistant', 

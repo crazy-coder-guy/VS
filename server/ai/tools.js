@@ -22,8 +22,18 @@ export const tools = [
       required: ['path']
     },
     execute: async (args, rootDir) => {
-      const fullPath = path.join(rootDir, args.path);
+      const fullPath = path.isAbsolute(args.path) ? args.path : path.join(rootDir, args.path);
+      console.log(`[Tool:read_file] path=${args.path}, fullPath=${fullPath}`);
       try {
+        const stats = await fs.stat(fullPath);
+        if (stats.isDirectory()) {
+          const entries = await fs.readdir(fullPath, { withFileTypes: true });
+          const list = entries
+            .filter(e => !e.name.startsWith('.') && e.name !== 'node_modules')
+            .map(e => `${e.name}${e.isDirectory() ? '/' : ''}`)
+            .join('\n');
+          return `This is a directory. Contents:\n${list}\nTo see the content of a specific file, call read_file on its path (e.g., "${args.path}/${entries[0]?.name || 'filename'}").`;
+        }
         const content = await fs.readFile(fullPath, 'utf8');
         return content;
       } catch (error) {
@@ -43,7 +53,8 @@ export const tools = [
       required: ['path', 'content']
     },
     execute: async (args, rootDir) => {
-      const fullPath = path.join(rootDir, args.path);
+      const fullPath = path.isAbsolute(args.path) ? args.path : path.join(rootDir, args.path);
+      console.log(`[Tool:write_file] path=${args.path}, fullPath=${fullPath}`);
       try {
         await fs.mkdir(path.dirname(fullPath), { recursive: true });
         await fs.writeFile(fullPath, args.content, 'utf8');
@@ -63,7 +74,8 @@ export const tools = [
       }
     },
     execute: async (args, rootDir) => {
-      const dirPath = path.join(rootDir, args.path || '.');
+      const dirPath = path.isAbsolute(args.path || '.') ? (args.path || '.') : path.join(rootDir, args.path || '.');
+      console.log(`[Tool:list_files] path=${args.path}, fullPath=${dirPath}`);
       try {
         const entries = await fs.readdir(dirPath, { withFileTypes: true });
         return entries
@@ -72,6 +84,44 @@ export const tools = [
           .join('\n');
       } catch (error) {
         return `Error listing directory: ${error.message}`;
+      }
+    }
+  },
+  {
+    name: 'get_workspace_info',
+    description: 'Get information about the current workspace root and its contents.',
+    parameters: { type: 'object', properties: {} },
+    execute: async (args, rootDir) => {
+      try {
+        const entries = await fs.readdir(rootDir, { withFileTypes: true });
+        const list = entries
+          .filter(e => !e.name.startsWith('.') && e.name !== 'node_modules')
+          .map(e => `${e.name}${e.isDirectory() ? '/' : ''}`)
+          .slice(0, 20) // Just a snippet
+          .join('\n');
+        return `Current Workspace Root: ${rootDir}\n\nTop-level contents:\n${list}`;
+      } catch (error) {
+        return `Error getting workspace info: ${error.message}`;
+      }
+    }
+  },
+  {
+    name: 'set_project_root',
+    description: 'Change the current workspace root directory (Absolute path).',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'The absolute path to the folders you want to switch to.' }
+      },
+      required: ['path']
+    },
+    execute: async (args, rootDir, setRootDir) => {
+      if (typeof setRootDir !== 'function') return "Error: setRootDir not available.";
+      try {
+        setRootDir(args.path);
+        return `Successfully switched project root to: ${args.path}`;
+      } catch (error) {
+        return `Error switching root: ${error.message}`;
       }
     }
   }
