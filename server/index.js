@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import http from 'http';
 import { Server } from 'socket.io';
 import pty from 'node-pty';
@@ -8,6 +9,7 @@ import chokidar from 'chokidar';
 import { exec } from 'child_process';
 import path from 'path';
 import GitService from './services/gitService.js';
+import setupAIService from './ai/aiService.js';
 
 const app = express();
 app.use(cors());
@@ -247,6 +249,9 @@ io.on('connection', (socket) => {
     broadcastGitStatus();
     socket.emit('project-root-updated', { path: rootDir });
   });
+
+  // AI Service
+  setupAIService(io, socket, rootDir);
 });
 
 const PORT = 3001;
