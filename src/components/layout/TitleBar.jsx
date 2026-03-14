@@ -22,8 +22,8 @@ const TitleBar = () => {
       
       const tree = await readDirectory(dirHandle);
 
-      // Synchronize with backend
-      const parentHint = rootFolderPath ? rootFolderPath.substring(0, rootFolderPath.lastIndexOf('\\')) : 'D:\\AICODE';
+      // Suggest the absolute path based on existing root or a generic drive
+      const parentHint = rootFolderPath ? rootFolderPath.substring(0, rootFolderPath.lastIndexOf('\\')) : 'D:';
       const defaultPath = `${parentHint}\\${dirHandle.name}`;
       const absolutePath = prompt(`Please confirm the absolute path for '${dirHandle.name}' (needed for Git/Linting):`, defaultPath);
       

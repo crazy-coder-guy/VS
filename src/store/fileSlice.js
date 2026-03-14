@@ -89,9 +89,7 @@ const fileSlice = createSlice({
       // Update terminal path dynamically
       if (action.payload.path) {
         state.terminals.forEach(t => {
-          if (t.cwd === 'D:\\AICODE\\ai-ide' || t.cwd === 'C:\\' || t.cwd.startsWith('D:\\AICODE')) {
-            t.cwd = action.payload.path;
-          }
+          t.cwd = action.payload.path;
         });
       }
     },
@@ -151,7 +149,7 @@ const fileSlice = createSlice({
       state.terminals.push({
         id: newId,
         name: action.payload?.name || 'powershell',
-        cwd: cwd || (state.rootFolderName ? `D:\\${state.rootFolderName}` : 'C:\\')
+        cwd: cwd || state.rootFolderPath || 'C:\\'
       });
       state.activeTerminalId = newId;
     },

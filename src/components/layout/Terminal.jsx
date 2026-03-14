@@ -75,11 +75,24 @@ const Terminal = ({ terminalId, initialCwd, name = 'powershell' }) => {
     term.open(terminalRef.current);
 
     // Join the global terminal session
-    projectSocket.emit('spawn-terminal', { terminalId, cwd: initialCwd });
+    const spawnSession = () => {
+      console.log(`Emitting spawn-terminal for ${terminalId}`);
+      projectSocket.emit('spawn-terminal', { terminalId, cwd: initialCwd });
+    };
+
+    spawnSession();
+
+    projectSocket.on('connect', spawnSession);
 
     const outputEvent = `terminal-output-${terminalId}`;
+    const exitEvent = `terminal-exit-${terminalId}`;
+
     projectSocket.on(outputEvent, (data) => {
       term.write(data);
+    });
+
+    projectSocket.on(exitEvent, ({ exitCode }) => {
+      term.write(`\r\n\x1b[31m[Process exited with code ${exitCode}]\x1b[0m\r\n`);
     });
 
     term.onData((data) => {
@@ -109,10 +122,20 @@ const Terminal = ({ terminalId, initialCwd, name = 'powershell' }) => {
     return () => {
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
+      projectSocket.off('connect', spawnSession);
       projectSocket.off(outputEvent);
+      projectSocket.off(exitEvent);
       term.dispose();
     };
-  }, [terminalId, theme, initialCwd]);
+  }, [terminalId, initialCwd]);
+
+  // Handle explicit cleanup ONLY when terminalId changes or unmounts
+  useEffect(() => {
+    return () => {
+      console.log(`Cleaning up PTY for ${terminalId}`);
+      projectSocket.emit('kill-terminal', { terminalId });
+    };
+  }, [terminalId]);
 
   // Handle theme changes
   useEffect(() => {

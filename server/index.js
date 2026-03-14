@@ -146,13 +146,39 @@ io.on('connection', (socket) => {
   runProjectLint(socket);
 
   // Terminal PTY management
-  socket.on('spawn-terminal', ({ terminalId, cwd }) => {
-    const initialCwd = cwd || rootDir;
+  const terminalProcesses = new Map();
+
+  socket.on('spawn-terminal', async ({ terminalId, cwd }) => {
+    let initialCwd = cwd || rootDir;
+    
+    // Resolve real path to handle junctions/symlinks on Windows
+    try {
+      if (fs.existsSync(initialCwd)) {
+        initialCwd = fs.realpathSync(initialCwd);
+      }
+    } catch (e) {
+      console.warn(`Failed to resolve real path for ${initialCwd}:`, e);
+    }
+
+    // Clean up existing PTY for this terminalId if it exists
+    if (terminalProcesses.has(terminalId)) {
+      console.log(`Killing existing PTY for ${terminalId} before re-spawning`);
+      try {
+        const oldPty = terminalProcesses.get(terminalId);
+        oldPty.kill();
+        // Give it a tiny bit of time to release handles if needed, 
+        // though pty.kill is usually synchronous in terms of handle release on Windows
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (e) {
+        console.warn(`Error killing PTY ${terminalId}:`, e);
+      }
+      terminalProcesses.delete(terminalId);
+    }
+
     console.log(`Spawning PTY for ${terminalId}: shell=${shell}, cwd=${initialCwd}`);
 
-    let ptyProcess;
     try {
-      ptyProcess = pty.spawn(shell, [], {
+      const ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols: 80,
         rows: 30,
@@ -160,35 +186,62 @@ io.on('connection', (socket) => {
         env: { ...process.env, NODE_OPTIONS: '--no-deprecation' }
       });
 
+      terminalProcesses.set(terminalId, ptyProcess);
+
       ptyProcess.onData((data) => {
         socket.emit(`terminal-output-${terminalId}`, data);
       });
 
-      const inputHandler = (data) => {
-        if (data.terminalId === terminalId) {
-          ptyProcess.write(data.input);
-        }
-      };
-
-      const resizeHandler = (data) => {
-        if (data.terminalId === terminalId) {
-          ptyProcess.resize(data.cols, data.rows);
-        }
-      };
-
-      socket.on('terminal-input', inputHandler);
-      socket.on('terminal-resize', resizeHandler);
-
-      socket.on('disconnect', () => {
-        console.log(`PTY ${terminalId} killed on disconnect`);
-        ptyProcess.kill();
-        socket.off('terminal-input', inputHandler);
-        socket.off('terminal-resize', resizeHandler);
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        console.log(`PTY ${terminalId} exited with code ${exitCode}`);
+        terminalProcesses.delete(terminalId);
+        socket.emit(`terminal-exit-${terminalId}`, { exitCode, signal });
       });
+
     } catch (err) {
       console.error('Failed to spawn PTY:', err);
       socket.emit(`terminal-output-${terminalId}`, `\r\n\x1b[31mFailed to spawn PTY: ${err.message}\x1b[0m\r\n`);
     }
+  });
+
+  socket.on('terminal-input', ({ terminalId, input }) => {
+    console.log(`Received input for ${terminalId}: ${input}`);
+    const ptyProcess = terminalProcesses.get(terminalId);
+    if (ptyProcess) {
+      ptyProcess.write(input);
+    } else {
+      console.warn(`No PTY process found for ${terminalId}`);
+    }
+  });
+
+  socket.on('terminal-resize', ({ terminalId, cols, rows }) => {
+    console.log(`Resizing terminal ${terminalId} to ${cols}x${rows}`);
+    const ptyProcess = terminalProcesses.get(terminalId);
+    if (ptyProcess && cols > 0 && rows > 0) {
+      ptyProcess.resize(cols, rows);
+    }
+  });
+
+  socket.on('kill-terminal', ({ terminalId }) => {
+    console.log(`Kill terminal request for ${terminalId}`);
+    if (terminalProcesses.has(terminalId)) {
+      console.log(`Explicitly killing PTY for ${terminalId}`);
+      try {
+        terminalProcesses.get(terminalId).kill();
+      } catch (e) { }
+      terminalProcesses.delete(terminalId);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected, cleaning up terminal processes');
+    terminalProcesses.forEach((ptyProcess, terminalId) => {
+      console.log(`Killing PTY ${terminalId}`);
+      try {
+        ptyProcess.kill();
+      } catch (e) { }
+    });
+    terminalProcesses.clear();
   });
   
   // --- Git Operations ---
