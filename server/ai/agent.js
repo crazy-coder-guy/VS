@@ -17,6 +17,13 @@ Tool Calling Protocol:
 6. If 'get_workspace_info' shows you are in the wrong project, inform the user or call 'set_project_root' if you have the correct absolute path.
 7. Strip "@" prefixes from all paths before passing them to tools.
 
+Precise Editing (Cursor-like):
+- To edit existing files, prefer 'replace_content' over 'write_file'.
+- 'replace_content' requires an EXACT match of the 'search' block. 
+- Use 'read_file' with 'lineNumbers: true' to see the exact content and indentation before calling 'replace_content'.
+- To remove ALL comments from a file, use the specialized 'remove_comments' tool for maximum efficiency.
+- To remove specific comments or large blocks, provide the exact multi-line block in 'search' and the cleaned version in 'replace'.
+
 Project Context:
 - You have tools to list files, read files, and write files. Use them proactively to explore.
 `;
@@ -28,7 +35,7 @@ export async function runAgent(userPrompt, rootDir, onProgress, setRootDir) {
   ];
 
   let iterations = 0;
-  const maxIterations = 5;
+  const maxIterations = 20;
 
   while (iterations < maxIterations) {
     iterations++;

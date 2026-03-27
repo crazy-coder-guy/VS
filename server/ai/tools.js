@@ -17,7 +17,8 @@ export const tools = [
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Relative path to the file from the workspace root.' }
+        path: { type: 'string', description: 'Relative path to the file from the workspace root.' },
+        lineNumbers: { type: 'boolean', description: 'Whether to include line numbers in the output.' }
       },
       required: ['path']
     },
@@ -34,10 +35,72 @@ export const tools = [
             .join('\n');
           return `This is a directory. Contents:\n${list}\nTo see the content of a specific file, call read_file on its path (e.g., "${args.path}/${entries[0]?.name || 'filename'}").`;
         }
-        const content = await fs.readFile(fullPath, 'utf8');
+        let content = await fs.readFile(fullPath, 'utf8');
+        if (args.lineNumbers) {
+          content = content.split('\n').map((line, i) => `${i + 1}: ${line}`).join('\n');
+        }
         return content;
       } catch (error) {
         return `Error reading file: ${error.message}`;
+      }
+    }
+  },
+  {
+    name: 'replace_content',
+    description: 'Replace a specific block of text in a file with new content. Use this for precise edits.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Relative path to the file.' },
+        search: { type: 'string', description: 'The exact block of code to find (including whitespace).' },
+        replace: { type: 'string', description: 'The new code block to replace it with.' }
+      },
+      required: ['path', 'search', 'replace']
+    },
+    execute: async (args, rootDir) => {
+      const fullPath = path.isAbsolute(args.path) ? args.path : path.join(rootDir, args.path);
+      console.log(`[Tool:replace_content] path=${args.path}`);
+      try {
+        let content = await fs.readFile(fullPath, 'utf8');
+        if (!content.includes(args.search)) {
+          return `Error: Could not find the exact 'search' content in ${args.path}. Please ensure you provided the exact text, including whitespace and line breaks.`;
+        }
+        const newContent = content.replace(args.search, args.replace);
+        await fs.writeFile(fullPath, newContent, 'utf8');
+        return `Successfully updated ${args.path}`;
+      } catch (error) {
+        return `Error updating file: ${error.message}`;
+      }
+    }
+  },
+  {
+    name: 'remove_comments',
+    description: 'Remove all comments (//, /* */) from a file efficiently.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Relative path to the file.' }
+      },
+      required: ['path']
+    },
+    execute: async (args, rootDir) => {
+      const fullPath = path.isAbsolute(args.path) ? args.path : path.join(rootDir, args.path);
+      console.log(`[Tool:remove_comments] path=${args.path}`);
+      try {
+        let content = await fs.readFile(fullPath, 'utf8');
+        
+        // Match strings and comments. If it's a comment, remove it. If it's a string, keep it.
+        const cleaned = content.replace(/(".*?"|'.*?'|`[\s\S]*?`|\/\*[\s\S]*?\*\/|\/\/.*)/g, (match) => {
+          if (match.startsWith('//') || match.startsWith('/*')) {
+            return '';
+          }
+          return match;
+        });
+        
+        await fs.writeFile(fullPath, cleaned, 'utf8');
+        return `Successfully removed all comments from ${args.path}`;
+      } catch (error) {
+        return `Error: ${error.message}`;
       }
     }
   },
